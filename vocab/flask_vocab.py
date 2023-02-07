@@ -79,7 +79,7 @@ def success():
 #   a JSON request handler
 #######################
 
-@app.route("/_check", methods=["POST"])
+@app.route("/_check")
 def check():
     """
     User has submitted the form with a word ('attempt')
@@ -92,35 +92,40 @@ def check():
     app.logger.debug("Entering check")
 
     # The data we need, from form and from cookie
-    text = flask.request.form["attempt"]
+    text = flask.request.args.get("text", type=str)
+    app.logger.debug(text)
     jumble = flask.session["jumble"]
-    matches = flask.session.get("matches", [])  # Default to empty list
-
+    matches = flask.session.get("matches", [])
+    already_matched = False
     # Is it good?
     in_jumble = LetterBag(jumble).contains(text)
     matched = WORDS.has(text)
-
+    app.logger.debug(in_jumble)
+    ret_text = ""
     # Respond appropriately
     if matched and in_jumble and not (text in matches):
         # Cool, they found a new word
         matches.append(text)
         flask.session["matches"] = matches
     elif text in matches:
-        flask.flash("You already found {}".format(text))
+        already_matched = True
+        ret_text = "You already found {}".format(text)
     elif not matched:
-        flask.flash("{} isn't in the list of words".format(text))
+        ret_text = "{} isn't in the list of words".format(text)
     elif not in_jumble:
-        flask.flash(
-            '"{}" can\'t be made from the letters {}'.format(text, jumble))
+        ret_text = '"{}" can\'t be made from the letters {}'.format(text, jumble)
     else:
         app.logger.debug("This case shouldn't happen!")
         assert False  # Raises AssertionError
 
+    success_url = ""
     # Choose page:  Solved enough, or keep going?
     if len(matches) >= flask.session["target_count"]:
-       return flask.redirect(flask.url_for("success"))
-    else:
-       return flask.redirect(flask.url_for("keep_going"))
+        success_url = flask.url_for("success")
+
+    rslt = {"matches": matches, "text": ret_text, "matched": matched and in_jumble and not already_matched, "success": success_url}
+
+    return flask.jsonify(result = rslt)
 
 
 ###############

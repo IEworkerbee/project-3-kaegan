@@ -77,27 +77,59 @@
                   <label for="attempt">Word:</label>
                   <input id="attempt" name="attempt" type="text" width="15"
                      autocomplete="off"  autofocus />
-                  <input type="submit" name="try" />
+
                </form>
             </div>
          </div>
          <br />
-         {% if session.matches|length is not equalto 0  %}
-         <h2>You found </h2>
+         <h2 id="title"></h2>
          <p id="results">
-            {% for match in session.matches %}
-            {{ match }}
-            {% endfor %}
          </p>
-         {% endif %}
-         {% with messages = get_flashed_messages() %}
-         {% if messages %}
          <!-- Mismatch, already found, etc. "flashed" from Python -->
-         {% for message in messages %}
-         <p class="message">{{ message }}</p>
-         {% endfor %}
-         {% endif %}
-         {% endwith %}
+
+         <p id="message">
+         </p>
+
+   
+         <script>
+            
+            // Suppress normal form submission
+            $("#entry").submit( function(event) {
+               event.preventDefault();
+              });
+
+            $("#attempt").keyup(function(event) {
+               var txt = $("#attempt").val();
+               var keycode = event.which; 
+               var letter = String.fromCharCode(keycode);
+
+               if (! "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(letter)) { return }
+
+               $.getJSON( "/_check", { text: txt },
+                          function(data) {
+                            ret_text = data.result.text;
+                            matches = data.result.matches;
+                            is_matched = data.result.matched
+                            success_url = data.result.success
+                            if (matches.length > 0){
+                              $("#title").html("You Found")
+                            }
+                            $("#message").html(ret_text);
+                            
+                            if (is_matched)
+                            {
+                              $("#results").append(matches[matches.length - 1], " ")
+                              $("#attempt").val("");
+                            }
+                            
+                            if (success_url != "")
+                            {
+                              window.location.href = success_url
+                            }
+                           }
+                       );
+               });
+         </script>
       </div>
       <!-- container -->
    </body>
